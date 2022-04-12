@@ -30,7 +30,8 @@ def draw_shape(im, shape, shape_size, pos, rot=0):
         ]) * radius + center).round().astype(int)
         cv2.fillConvexPoly(im, points, shape.color)
     elif shape.type == 'circle':
-        cv2.circle(im, center.round().astype(int), round(radius), shape.color, -1)
+        cv2.circle(im, tuple(center.round().astype(int)),
+                   round(radius), shape.color, -1)
     elif shape.type == 'triangle':
         points = (np.array([
             rot_mat @ (1, 0),
