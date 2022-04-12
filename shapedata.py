@@ -27,7 +27,7 @@ def draw_shape(im, shape, shape_size, pos, rot=0):
             rot_mat @ (0, 1),
             rot_mat @ (1, 0),
             rot_mat @ (0, -1),
-        ])* radius + center).round().astype(int)
+        ]) * radius + center).round().astype(int)
         cv2.fillConvexPoly(im, points, shape.color)
     elif shape.type == 'circle':
         cv2.circle(im, center.round().astype(int), round(radius), shape.color, -1)
@@ -64,7 +64,9 @@ def select_shapes(max_shapes):
 
 def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, max_shapes=5):
     x1 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
+    x1_shapes = []
     x2 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
+    x2_shapes = []
     y = np.zeros(batch_size, np.float32)
 
     for i in range(batch_size):
@@ -78,11 +80,16 @@ def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, max_shapes=5)
 
         draw_shapes(x1[i], shapes1, shape_scale)
         draw_shapes(x2[i], shapes2, shape_scale)
+        x1_shapes.append(shapes1)
+        x2_shapes.append(shapes2)
 
-    return x1, x2, y
+    return (x1, x1_shapes), (x2, x2_shapes), y
 
 
+def to_pytorch_model_inputs(x1, x2, y):
+    X = np.concatenate([x1, x2]) / 256
+    X = X.transpose(0, 3, 1, 2)
+    y = np.concatenate([y, y])
 
-
-
+    return X, y
 
