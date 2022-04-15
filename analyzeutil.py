@@ -10,6 +10,7 @@ import torch
 
 
 def create_dataset(model, data, n=100, progress=None):
+    device = next(model.parameters()).device
     shape_list = []
     enc_list = []
     img_list = []
@@ -21,7 +22,7 @@ def create_dataset(model, data, n=100, progress=None):
     model.eval()
     for _ in it:
         (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
-        X, y = shapedata.to_pytorch_inputs(x1, x2, y, device=model)
+        X, y = shapedata.to_pytorch_inputs(x1, x2, y, device=device)
 
         loss, pred, enc = model.forward(X)
 
