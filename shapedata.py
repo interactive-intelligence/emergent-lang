@@ -58,12 +58,12 @@ def random_shape():
                  color=SHAPE_COLORS[np.random.randint(len(SHAPE_COLORS))])
 
 
-def select_shapes(max_shapes):
-    count = np.random.randint(1, max_shapes+1)
+def select_shapes(max_shapes, min_shapes=1):
+    count = np.random.randint(min_shapes, max_shapes+1)
     return [random_shape() for _ in range(count)]
 
 
-def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, max_shapes=5):
+def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, min_shapes=1, max_shapes=5):
     x1 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
     x1_shapes = []
     x2 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
@@ -71,7 +71,7 @@ def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, max_shapes=5)
     y = np.zeros(batch_size, np.float32)
 
     for i in range(batch_size):
-        shapes1 = select_shapes(max_shapes)
+        shapes1 = select_shapes(max_shapes, min_shapes=min_shapes)
         if np.random.rand() < same_p:
             shapes2 = shapes1
             y[i] = 1
