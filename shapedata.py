@@ -76,7 +76,7 @@ def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, min_shapes=1,
             shapes2 = shapes1
             y[i] = 1
         else:
-            shapes2 = select_shapes(max_shapes)
+            shapes2 = select_shapes(max_shapes, min_shapes=min_shapes)
             y[i] = 0
 
         draw_shapes(x1[i], shapes1, shape_scale)
