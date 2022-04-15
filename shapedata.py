@@ -84,12 +84,13 @@ def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2,
     for i in range(batch_size):
         shapes1 = select_shapes(max_shapes, min_shapes=min_shapes,
                                 shape_types=shape_types, shape_colors=shape_colors)
+        shapes2 = shapes1
         if np.random.rand() < same_p:
-            shapes2 = shapes1
             y[i] = 1
         else:
-            shapes2 = select_shapes(max_shapes, min_shapes=min_shapes,
-                                    shape_types=shape_types, shape_colors=shape_colors)
+            while shapes2 == shapes1:
+                shapes2 = select_shapes(max_shapes, min_shapes=min_shapes,
+                                        shape_types=shape_types, shape_colors=shape_colors)
             y[i] = 0
 
         draw_shapes(x1[i], shapes1, shape_scale)
