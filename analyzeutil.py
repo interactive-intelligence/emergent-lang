@@ -1,14 +1,13 @@
 
 import numpy as np
+import pandas as pd
+from PIL import Image
 
 import torch
 import torchvision
-import pandas as pd
+from torchvision import transforms
 
 import shapedata
-import torch
-
-from PIL import Image
 
 
 def create_dataset(model, data, n=100, progress=None):
@@ -78,7 +77,7 @@ def extend_dataset(df, types=shapedata.SHAPE_TYPES,
     if types is not None:
         for type in types:
             df[f'has_{type}'] = df['shapes'].map(contains_f(type=type))
-    if shapes is not None:
+    if colors is not None:
         for color in colors:
             df[f'has_{color}'] = df['shapes'].map(contains_f(color=colors[color]))
 
