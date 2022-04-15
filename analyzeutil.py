@@ -8,6 +8,8 @@ import pandas as pd
 import shapedata
 import torch
 
+from PIL import Image
+
 
 def create_dataset(model, data, n=100, progress=None):
     device = next(model.parameters()).device
