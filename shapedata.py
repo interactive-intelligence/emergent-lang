@@ -53,17 +53,28 @@ def draw_shapes(im, shapes, shape_scale=0.2):
         draw_shape(im, shape, shape_size, pos, rot)
 
 
-def random_shape():
-    return Shape(type=SHAPE_TYPES[np.random.randint(len(SHAPE_TYPES))],
-                 color=SHAPE_COLORS[np.random.randint(len(SHAPE_COLORS))])
+def pick_random_color():
+    return tuple(map(int, np.random.randint(0, 256, 3)))
+
+def random_shape(shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
+    shape_type = np.random.choice(shape_types)
+    if type(shape_colors) is list:
+        shape_color = shape_colors[np.random.randint(len(shape_colors))]
+    else:
+        shape_color = shape_colors()
+
+    return Shape(type=shape_type, color=shape_color)
 
 
-def select_shapes(max_shapes, min_shapes=1):
+def select_shapes(max_shapes, min_shapes=1,
+                  shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
     count = np.random.randint(min_shapes, max_shapes+1)
-    return [random_shape() for _ in range(count)]
+    return [random_shape(shape_types, shape_colors) for _ in range(count)]
 
 
-def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, min_shapes=1, max_shapes=5):
+def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2,
+                 min_shapes=1, max_shapes=5,
+                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
     x1 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
     x1_shapes = []
     x2 = np.zeros((batch_size,im_size,im_size,3), np.uint8)
@@ -71,12 +82,14 @@ def create_batch(batch_size, im_size, same_p=0.5, shape_scale=0.2, min_shapes=1,
     y = np.zeros(batch_size, np.float32)
 
     for i in range(batch_size):
-        shapes1 = select_shapes(max_shapes, min_shapes=min_shapes)
+        shapes1 = select_shapes(max_shapes, min_shapes=min_shapes,
+                                shape_types=shape_types, shape_colors=shape_colors)
         if np.random.rand() < same_p:
             shapes2 = shapes1
             y[i] = 1
         else:
-            shapes2 = select_shapes(max_shapes, min_shapes=min_shapes)
+            shapes2 = select_shapes(max_shapes, min_shapes=min_shapes,
+                                    shape_types=shape_types, shape_colors=shape_colors)
             y[i] = 0
 
         draw_shapes(x1[i], shapes1, shape_scale)
