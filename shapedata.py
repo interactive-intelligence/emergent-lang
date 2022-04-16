@@ -96,7 +96,7 @@ class ShapeData():
     """
 
     def __init__(self, batch_size:int, im_size:int, shape_scale:float=0.2,
-                 min_shapes:int=1, max_shapes:int=5, outline=None,
+                 min_shapes:int=1, max_shapes:int=5, outline=None, alec_mode=False,
                  shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
         self.batch_size = batch_size
         self.im_size = im_size
@@ -104,6 +104,8 @@ class ShapeData():
         self.min_shapes = min_shapes
         self.max_shapes = max_shapes
         self.outline = outline
+
+        self.alec_mode = alec_mode #TODO: document
 
         self.shape_types = shape_types
         if type(shape_colors) is list:
@@ -156,6 +158,9 @@ class ShapeData():
     def select_shape_list(self):
         """Utility function to select a list of shapes. """
         count = random.randint(self.min_shapes, self.max_shapes)
+        if self.alec_mode:
+            return [self.select_shape()] * count
+
         return [self.select_shape() for _ in range(count)]
 
     def select_shape(self):
