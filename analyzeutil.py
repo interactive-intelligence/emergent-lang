@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-import torch
+import torch 
 import torchvision
 from torchvision import transforms
 
