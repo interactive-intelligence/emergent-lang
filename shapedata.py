@@ -17,7 +17,7 @@ SHAPE_COLORS = [ (255,0,0), (0,255,0), (0,0,255) ]
 Shape = namedtuple('Shape', ['type', 'color'])
 
 
-def draw_shape(im, shape, shape_size, pos, rot=0):
+def draw_shape(im, shape, shape_size, pos, rot=0, outline=None):
     rot_mat = np.array([[np.cos(rot), -np.sin(rot)],
                         [np.sin(rot),  np.cos(rot)]])
 
@@ -29,26 +29,32 @@ def draw_shape(im, shape, shape_size, pos, rot=0):
             (-1, 0), (0, 1), (1, 0), (0, -1),
         ]) @ rot_mat.T) * radius + center).round().astype(int)
         cv2.fillConvexPoly(im, points, shape.color)
+        if outline is not None:
+            cv2.polylines(im, [points], True, outline)
     elif shape.type == 'circle':
-        cv2.circle(im, tuple(center.round().astype(int)),
-                   round(radius), shape.color, -1)
+        center = tuple(center.round().astype(int))
+        cv2.circle(im, center, round(radius), shape.color, -1)
+        if outline is not None:
+            cv2.circle(im, center, round(radius), outline)
     elif shape.type == 'triangle':
         points = ((np.array([
             (1, 0), (-0.5, 0.8660254), (-0.5, -0.8660254),
         ]) @ rot_mat.T) * radius + center).round().astype(int)
         cv2.fillConvexPoly(im, points, shape.color)
+        if outline is not None:
+            cv2.polylines(im, [points], True, outline)
     else:
         raise Exception(f'unsupported/invalid shape type "{shape.type}"')
 
 
-def draw_shapes(im, shapes, shape_scale=0.2):
+def draw_shapes(im, shapes, shape_scale=0.2, outline=None):
     im_size = im.shape[0]
     shape_size = im_size * shape_scale
 
     for shape in shapes:
         pos = np.random.rand(2) * (im_size-shape_size)
         rot = np.random.rand() * np.pi
-        draw_shape(im, shape, shape_size, pos, rot)
+        draw_shape(im, shape, shape_size, pos, rot, outline)
 
 
 def pick_random_color():
@@ -80,6 +86,7 @@ class ShapeData():
         shape_scale: Fraction of (shape size)/(image size)
         min_shapes: Minimum number of shapes in each image
         max_shapes: Maximum number of shapes in each image
+        outline: Outline color for shapes
         shape_types: List of possible shape type strings, randomly sampled
             for every generated shape
         shape_colors: Defines shape colors. Either a 0-argument function
@@ -89,13 +96,14 @@ class ShapeData():
     """
 
     def __init__(self, batch_size:int, im_size:int, shape_scale:float=0.2,
-                 min_shapes:int=1, max_shapes:int=5,
+                 min_shapes:int=1, max_shapes:int=5, outline=None,
                  shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
         self.batch_size = batch_size
         self.im_size = im_size
         self.shape_scale = shape_scale
         self.min_shapes = min_shapes
         self.max_shapes = max_shapes
+        self.outline = outline
 
         self.shape_types = shape_types
         if type(shape_colors) is list:
@@ -138,8 +146,8 @@ class ShapeData():
             else:
                 shapes1 = shapes2 = shapes
 
-            draw_shapes(x1[i], shapes1, self.shape_scale)
-            draw_shapes(x2[i], shapes2, self.shape_scale)
+            draw_shapes(x1[i], shapes1, self.shape_scale, outline=self.outline)
+            draw_shapes(x2[i], shapes2, self.shape_scale, outline=self.outline)
             x1_shapes.append(shapes1)
             x2_shapes.append(shapes2)
 
