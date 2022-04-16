@@ -39,9 +39,9 @@ def create_dataset(model, data, n=100, progress=None):
 
 
 def encoding_heatmap(enc, vocab_size=4, seq_len=10):
-    arr = np.zeros((vocab_size, seq_len), int)
+    arr = np.zeros((seq_len, vocab_size), int)
     for encoding, count in enc.value_counts().items():
-        arr[tuple(i for i in range(vocab_size)), encoding] += count
+        arr[tuple(i for i in range(seq_len)), encoding] += count
     return arr
 
 
