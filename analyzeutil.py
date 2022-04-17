@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-import torch 
+import torch
 import torchvision
 from torchvision import transforms
 
@@ -12,13 +12,11 @@ import shapedata
 
 def create_dataset(model, data, n=100, progress=None):
     device = next(model.parameters()).device
-    shape_list = []
-    enc_list = []
-    img_list = []
+
+    frame_dict = { 'enc': [], 'shapes': [], 'images': [] }
 
     it = range(n)
-    if progress is not None:
-        it = progress(it)
+    it = it if (progress is None) else progress(it)
 
     model.eval()
     for _ in it:
@@ -27,22 +25,19 @@ def create_dataset(model, data, n=100, progress=None):
 
         loss, pred, enc = model.forward(X)
 
-        shape_list += x1_shapes+x2_shapes
-        #enc_list += list(map(tuple, enc.argmax(2).T.tolist()))
-        enc_list += enc
-        img_list += [*map(Image.fromarray, x1), *map(Image.fromarray, x2)]
+        frame_dict['enc'] += enc
+        frame_dict['shapes'] += x1_shapes+x2_shapes
+        frame_dict['images'] += [*map(Image.fromarray, x1),
+                                 *map(Image.fromarray, x2)]
 
-    return pd.DataFrame({
-        'shapes': shape_list,
-        'enc': enc_list,
-        'images': img_list
-    })
+    return pd.DataFrame(frame_dict)
 
 
-def encoding_heatmap(enc, vocab_size=4, seq_len=10):
-    arr = np.zeros((seq_len, vocab_size), int)
+def encoding_heatmap(enc:pd.Series, vocab_size=10):
+    max_len = enc.map(len).max()
+    arr = np.zeros((max_len, vocab_size), int)
     for encoding, count in enc.value_counts().items():
-        arr[tuple(i for i in range(seq_len)), encoding] += count
+        arr[tuple(range(seq_len)), encoding] += count
     return arr
 
 
@@ -57,7 +52,7 @@ def sample_images(im_series:pd.Series, n=64):
 
 def match_sequence(seq, target_seq):
     for a, b in zip(seq, target_seq):
-        if b != '_' and a != b:
+        if (a != b) and (b != '_'):
             return False
     return True
 
