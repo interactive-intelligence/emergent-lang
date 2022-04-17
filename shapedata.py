@@ -3,6 +3,7 @@
 import random
 import numpy as np
 import cv2
+from PIL import Image
 
 from collections import namedtuple
 #from tqdm.notebook import tqdm
@@ -170,6 +171,41 @@ class ShapeData():
         return Shape(type=shape_type, color=shape_color)
 
 
+
+def make_grid(im, shape=(4, 3), pad_value=100, pad_width=6):
+    size = shape[0] * shape[1]
+    im = im[:size].reshape(*shape, *im.shape[1:])
+
+    im = np.concatenate([
+        np.zeros((*shape, pad_width, im.shape[3], im.shape[4]), np.uint8) + pad_value,
+        im,
+        np.zeros((*shape, pad_width, im.shape[3], im.shape[4]), np.uint8) + pad_value,
+    ], axis=2)
+
+    im = np.concatenate([
+        np.zeros((*shape, im.shape[2], pad_width, im.shape[4]), np.uint8) + pad_value,
+        im,
+        np.zeros((*shape, im.shape[2], pad_width, im.shape[4]), np.uint8) + pad_value,
+    ], axis=3)
+
+    im = np.concatenate(im, axis=1)
+    im = np.concatenate(im, axis=1)
+
+    return im
+
+def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3):
+    (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
+    size = shape[0] * shape[1]
+
+    x = np.concatenate([
+        x1[:size],
+        np.zeros((size, x1.shape[1], sep_width, 3), np.uint8) + pad_value +
+        y.astype(np.uint8)[:size].reshape(-1, 1, 1, 1) * (255 - pad_value),
+        x2[:size],
+    ], axis=2)
+
+    x = make_grid(x, shape=shape, pad_value=pad_value, pad_width=pad_width)
+    return Image.fromarray(x)
 
 
 
