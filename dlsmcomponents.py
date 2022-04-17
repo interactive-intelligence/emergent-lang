@@ -1,3 +1,9 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
+import torch.optim as optim
+
 class VectorQuantizerEMA(nn.Module):
     def __init__(self, num_embeddings, embedding_dim, commitment_cost, decay, epsilon=1e-5):
         super(VectorQuantizerEMA, self).__init__()
