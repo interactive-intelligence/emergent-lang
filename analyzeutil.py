@@ -28,7 +28,8 @@ def create_dataset(model, data, n=100, progress=None):
         loss, pred, enc = model.forward(X)
 
         shape_list += x1_shapes+x2_shapes
-        enc_list += list(map(tuple, enc.argmax(2).T.tolist()))
+        #enc_list += list(map(tuple, enc.argmax(2).T.tolist()))
+        enc_list += enc
         img_list += [*map(Image.fromarray, x1), *map(Image.fromarray, x2)]
 
     return pd.DataFrame({
