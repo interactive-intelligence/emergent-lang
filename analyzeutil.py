@@ -25,7 +25,7 @@ def create_dataset(model, data, n=100, progress=None):
 
         loss, pred, enc = model.forward(X)
 
-        frame_dict['enc'] += enc
+        frame_dict['enc'] += enc.reshape((enc.shape[1], enc.shape[0], -1)
         frame_dict['shapes'] += x1_shapes+x2_shapes
         frame_dict['images'] += [*map(Image.fromarray, x1),
                                  *map(Image.fromarray, x2)]
