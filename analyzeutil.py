@@ -37,7 +37,7 @@ def encoding_heatmap(enc:pd.Series, vocab_size=10):
     max_len = enc.map(len).max()
     arr = np.zeros((max_len, vocab_size), int)
     for encoding, count in enc.value_counts().items():
-        arr[tuple(range(max_len)), encoding] += count
+        arr[tuple(range(len(encoding)), encoding] += count
     return arr
 
 
