@@ -72,7 +72,7 @@ class VectorQuantizerEMA(nn.Module):
 
 
 class VisionModule(nn.Module):
-    def __init__(self):
+    def __init__(self, img_dim=64):
         super(VisionModule, self).__init__()
 
         self.cnn = nn.Sequential(
@@ -85,7 +85,7 @@ class VisionModule(nn.Module):
             nn.MaxPool2d(2),
             
             nn.Flatten(),
-            nn.Linear(int(32*IMG_DIM/4*IMG_DIM/4), 64),
+            nn.Linear(int(32*img_dim/4*img_dim/4), 64),
 
             nn.BatchNorm1d(64),
         )
