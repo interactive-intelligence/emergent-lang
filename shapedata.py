@@ -94,17 +94,27 @@ class ShapeData():
             returning a ([0-255],[0-255],[0-255]) color tuple or a list.
             If a function, it's called to pick the color for each shape.
             If a list, it's randomly sampled for each shape.
+        use_explicit_shapes: Whether you are explicitly specifying
+            shape-color pairs (True) or not (False). Useful for OOD
+            training tasks.
+        explicit_shapes: A list of possible objects in tuple format
+            (shape_type, shape_color). Only considered if
+            use_explicit_shapes is True.
     """
 
     def __init__(self, batch_size:int, im_size:int, shape_scale:float=0.2,
                  min_shapes:int=1, max_shapes:int=5, outline=None, alec_mode=False,
-                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
+                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS,
+                 use_explicit_obj:bool=False, explicit_shapes=[]):
         self.batch_size = batch_size
         self.im_size = im_size
         self.shape_scale = shape_scale
         self.min_shapes = min_shapes
         self.max_shapes = max_shapes
         self.outline = outline
+        
+        self.use_explicit_obj = use_explicit_obj
+        self.explicit_shapes = explicit_shapes
 
         self.alec_mode = alec_mode #TODO: document
 
@@ -166,8 +176,11 @@ class ShapeData():
 
     def select_shape(self):
         """Utility function to select a single shape. """
-        shape_type = random.choice(self.shape_types)
-        shape_color = self.shape_color_f()
+        if self.use_explicit_obj:
+            shape_type, shape_color = random.choice(self.explicit_shapes)
+        else:
+            shape_type = random.choice(self.shape_types)
+            shape_color = self.shape_color_f()
         return Shape(type=shape_type, color=shape_color)
 
 
