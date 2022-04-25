@@ -297,7 +297,7 @@ class ExcludeShapeData(ShapeData):
         super().__init__(*args, **kwargs)
 
         self.exclude_shapes = exclude_shapes
-        self.exclude_lists = {tuple(sorted(shapes)) for shapes in exclude_lists} if exclude_lists else None
+        self.exclude_lists = None if not exclude_lists else {tuple(sorted(shapes)) for shapes in exclude_lists}
 
 
     def select_shape_list(self, max_tries=1000):
