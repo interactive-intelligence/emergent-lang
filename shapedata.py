@@ -293,11 +293,11 @@ class ExcludeShapeData(ShapeData):
         exclude_lists (List[List[Shape]]): Combinations of shapes to exclude from generation
     """
 
-    def __init__(self, *args, exclude_shapes:set=None, exclude_lists:list=[], **kwargs):
+    def __init__(self, *args, exclude_shapes:set=None, exclude_lists:list=None, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.exclude_shapes = exclude_shapes
-        self.exclude_lists = {tuple(sorted(shapes)) for shapes in exclude_lists}
+        self.exclude_lists = {tuple(sorted(shapes)) for shapes in exclude_lists} if exclude_lists else None
 
 
     def select_shape_list(self, max_tries=1000):
