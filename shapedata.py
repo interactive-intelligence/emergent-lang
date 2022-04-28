@@ -246,6 +246,8 @@ class AlecModeShapeData(ShapeData):
 
     Base behavior is only one category of shape per image. Strong Alec mode
     means only one aspect of the shape definitions can be different in a pair.
+
+    'Not much how bout you' - Alec
     """
 
     def __init__(self, *args, weak=True, strong=False,
