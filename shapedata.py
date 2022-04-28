@@ -248,7 +248,8 @@ class AlecModeShapeData(ShapeData):
     means only one aspect of the shape definitions can be different in a pair.
     """
 
-    def __init__(self, *args, weak=True, strong=False, **kwargs):
+    def __init__(self, *args, weak=True, strong=False,
+                 smart=True, dumb=False, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.strong = strong
