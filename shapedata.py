@@ -403,13 +403,12 @@ class AlecOODShapeData(ShapeData):
         '''
         Selects a pair of objects such that at least one adheres to OOD properties
         '''
+        shapes1 = self.select_shape_list_ood()
         if same:
-            shapes = self.select_shape_list_ood()
-            return shapes, shapes
+            shapes2 = self.select_shape_list_ood()
         else:
-            shapes1 = self.select_shape_list_ood()
             shapes2 = self.select_shape_list(color_spec)
-            return shapes1, shapes2
+        return shapes1, shapes2
         
     def create_batch_ood(self, same_p:float=0.5, color_spec:list=[]):
         """
