@@ -132,7 +132,7 @@ def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, oo
     ood and color_spec parameters only relevant if using AlecOODShapeData class
     '''
     if ood:
-        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch_ood(color_spec)
+        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch_ood(color_spec=color_spec)
     else:
         (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
     size = shape[0] * shape[1]
