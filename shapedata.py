@@ -331,4 +331,108 @@ class ExcludeShapeData(ShapeData):
         raise Exception("reached max number of tries for generating shape")
 
 
+class AlecOODShapeData(ShapeData):
+    """
+    An Out of Distribution (OOD) task adhering to Alec Mode. Conceptually, this is
+    a merger of AlecModeShapeData and ExcludeShapeData classes used for testing
+    model understanding of language. Represents 'reasonable extrapolation'.
+    
+    exclude_shapes: a set of tuples in form (shape_name, color). For instance,
+        {('square', (255, 0, 0)), ('circle', (0, 255, 0))} excludes red squares
+        and green circles from the in-distribution training dataset. The excluded
+        shapes constitute the out-of-distribution dataset.
+    id_object_counts: valid object counts for in-distribution training dataset.
+        For instance, [1, 2, 3] specifies that there are either 1, 2, or 3 objects
+        in each in-distribution scene.
+    ood_object_counts: valid object counts for out-of-distribution dataset.
+        For instance, [4, 5] specifies that there are either 4 or 5 objects in each
+        out of distribution scene. This can be set to be a subset of id_object_counts
+        if not focusing on extrapolating to new object counts.
+    """
+    
+    def __init__(self, *args, 
+                 exclude_shapes:set={}, 
+                 id_object_counts:list=[],
+                 ood_object_counts:list=[],
+                 **kwargs):
+        super().__init__(*args, **kwargs)
 
+        self.exclude_shapes = exclude_shapes
+        self.id_object_counts = id_object_counts
+        self.ood_object_counts = ood_object_counts
+    
+    def select_shape_list(self, color_spec:list=[]):
+        '''
+        Returns a list of selected shapes with in-distribution properties
+        '''
+        return [self.select_shape(color_spec)] * np.random.choice(self.id_object_counts)
+
+    def select_shape(self, color_spec:list=[], max_tries=1000):
+        '''
+        Selects a shape with in-distribution properties
+        '''
+        out = super().select_shape()
+        for _ in range(max_tries):
+            if out in self.exclude_shapes or (color_spec!=[] and out.color not in color_spec):
+                out = super().select_shape()
+            else:
+                return out
+
+        raise Exception("reached max number of tries for generating shape")
+        
+    def select_shape_list_ood(self):
+        '''
+        Returns a list of selected shapes with out-of-distribution properties
+        '''
+        return [self.select_shape_ood()] * np.random.choice(self.ood_object_counts)
+    
+    def select_shape_ood(self, max_tries=1000):
+        '''
+        Selects a shape with out-of-distribution properties
+        '''
+        out = super().select_shape()
+        for _ in range(max_tries):
+            if out not in self.exclude_shapes:
+                out = super().select_shape()
+            else:
+                return out
+
+        raise Exception("reached max number of tries for generating shape")
+        
+    def select_pair_ood(self, same, color_spec:list=[], max_tries=1000):
+        '''
+        Selects a pair of objects such that at least one adheres to OOD properties
+        '''
+        if same:
+            shapes = self.select_shape_list_ood()
+            return shapes, shapes
+        else:
+            shapes1 = self.select_shape_list_ood()
+            shapes2 = self.select_shape_list(color_spec)
+            return shapes1, shapes2
+        
+    def create_batch_ood(self, same_p:float=0.5, color_spec:list=[]):
+        """
+        Identical to create_batch_ood, except draws batch using OOD properties
+        Set color_spec to generate 'other' samples that have a specified set of
+        colors. Useful to prevent models from gaming metrics by color separation.
+        e.g. if the out of distribution shape is a red square, you can set
+        color_spec=[(255,0,0)] such that, for false labels, it is only compared
+        against red shapes.
+        """
+        image_shape = (self.batch_size, self.im_size, self.im_size, 3)
+        x1 = np.zeros(image_shape, np.uint8)
+        x2 = np.zeros(image_shape, np.uint8)
+        y = np.zeros(self.batch_size, np.float32)
+        x1_shapes = []
+        x2_shapes = []
+
+        for i in range(self.batch_size):
+            y[i] = (random.random() < same_p)
+            shapes1, shapes2 = self.select_pair_ood(y[i], color_spec)
+            draw_shapes(x1[i], shapes1, self.shape_scale, outline=self.outline)
+            draw_shapes(x2[i], shapes2, self.shape_scale, outline=self.outline)
+            x1_shapes.append(shapes1)
+            x2_shapes.append(shapes2)
+
+        return (x1, x1_shapes), (x2, x2_shapes), y
