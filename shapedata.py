@@ -127,8 +127,11 @@ def make_grid(im, shape=(4, 3), pad_value=100, pad_width=6):
 
     return im
 
-def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3):
-    (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
+def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, ood=False):
+    if ood:
+        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch_ood()
+    else:
+        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
     size = shape[0] * shape[1]
 
     x = np.concatenate([
