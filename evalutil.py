@@ -11,6 +11,7 @@ def dlsm_acc(outa, outb, y):
 def alec_ood_eval(model, data, color_spec=None, num_batches=10):
   '''
   Assumes model can be directly called on inputs like model(x).
+  Assumes the dataset passed in is of type shapedata.AlecOODShapeData.
   Returns a dictionary with accuracies for in-distribution, out-of-distribution,
     and out-of-distribution + color spec (if not None) accuracies, evaluated
     across a specified number of batches.
