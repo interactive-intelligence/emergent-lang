@@ -89,8 +89,8 @@ def draw_shapes(im, shapes, shape_scale=0.2, outline=None):
         draw_shape(im, shape, shape_size, pos, rot, outline)
 
 
-def pick_random_color():
-    return tuple(random.randint(0, 255) for _ in range(3))
+#def pick_random_color():
+    #return tuple(random.randint(0, 255) for _ in range(3))
 
 
 def to_pytorch_inputs(x1, x2, y, device=None):
@@ -127,14 +127,8 @@ def make_grid(im, shape=(4, 3), pad_value=100, pad_width=6):
 
     return im
 
-def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, ood=False, color_spec:list=[]):
-    '''
-    ood and color_spec parameters only relevant if using AlecOODShapeData class
-    '''
-    if ood:
-        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch_ood(color_spec=color_spec)
-    else:
-        (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch()
+def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, **kwargs):
+    (x1, x1_shapes), (x2, x2_shapes), y = data.create_batch(**kwargs)
     size = shape[0] * shape[1]
 
     x = np.concatenate([
@@ -148,6 +142,159 @@ def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, oo
     return Image.fromarray(x)
 
 
+class NewShapeData():
+    def __init__(self, batch_size:int, im_size:int,
+                 shape_scale:float=0.2, outline=None, alec_mode:bool=True,
+                 min_shapes:int=1, max_shapes:int=3,
+                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS,
+                 max_tries=1000):
+        self.batch_size = batch_size
+        self.im_size = im_size
+        self.shape_scale = shape_scale
+        self.outline = outline
+        self.alec_mode = alec_mode
+        self.min_shapes = min_shapes
+        self.max_shapes = max_shapes
+
+        self.shape_types = shape_types
+        self.shape_colors = shape_colors
+
+        self.max_tries = max_tries
+
+    def create_batch(self, same_p:float=0.5, shapes:List[Shape]=None, **kwargs):
+        image_shape = (self.batch_size, self.im_size, self.im_size, 3)
+        x1 = np.zeros(image_shape, np.uint8)
+        x2 = np.zeros(image_shape, np.uint8)
+        y = np.zeros(self.batch_size, np.float32)
+        x1_shapes = []
+        x2_shapes = []
+
+        for i in range(self.batch_size):
+            if shapes is None:
+                y[i] = (random.random() < same_p)
+                shapes1, shapes2 = self.select_pair(y[i], **kwargs)
+            else:
+                y[i] = 1
+                shapes1 = shapes2 = shapes
+
+            draw_shapes(x1[i], shapes1, self.shape_scale, outline=self.outline)
+            draw_shapes(x2[i], shapes2, self.shape_scale, outline=self.outline)
+            x1_shapes.append(shapes1)
+            x2_shapes.append(shapes2)
+
+        return (x1, x1_shapes), (x2, x2_shapes), y
+
+    def select_pair(self, same, **kwargs):
+        for _ in range(self.max_tries):
+            if same:
+                shapes1 = shapes2 = self.select_shapes_def(**kwargs)
+            else:
+                shapes1 = self.select_shapes_def(**kwargs)
+                shapes2 = self.select_shapes_def(**kwargs)
+                if shapes1 == shapes2:
+                    continue
+
+            if self.filter_pair(shapes1, shapes2, **kwargs):
+                shapes1 = self.map_shapes_def(shapes1, **kwargs)
+                shapes2 = self.map_shapes_def(shapes2, **kwargs)
+                return shapes1, shapes2
+
+        raise Exception("reached max number of tries for generating pair")
+
+    def select_shapes_def(self, **kwargs):
+        count = random.randint(self.min_shapes, self.max_shapes)
+        return [self.select_shape(**kwargs) for _ in range(count)]
+
+    def select_shape(self, **kwargs):
+        for _ in range(self.max_tries):
+            shape = Shape(type=random.choice(self.shape_types),
+                         color=random.choice(self.shape_colors))
+            if self.filter_shape(shape, **kwargs):
+                return shape
+
+        raise Exception("reached max number of tries for generating pair")
+
+    def filter_shape(self, shape, **kwargs):
+        return True
+
+    def filter_pair(self, shapes1, shapes2, **kwargs):
+        return self.filter_shapes_def(shapes1, **kwargs) and self.filter_shapes_def(shapes2, **kwargs)
+
+    def filter_shapes_def(self, shapes, **kwargs):
+        return True
+
+    def map_shapes_def(self, shapes, **kwargs):
+        return shapes
+
+
+AlecDef = namedtuple('AlecDef', ['count', 'type', 'color'])
+class NewAlecShapeData(NewShapeData):
+
+    def select_shapes_def(self, **kwargs):
+        count = random.randint(self.min_shapes, self.max_shapes)
+        type = random.choice(self.shape_types)
+        color = random.choice(self.shape_colors)
+        return AlecDef(count, type, color)
+
+    def map_shapes_def(self, shapes, **kwargs):
+        return [Shape(shapes.type, shapes.color)] * shapes.count
+
+
+class NewOODShapeData(NewAlecShapeData):
+    def __init__(self, *args, exclude=AlecDef(None, 'square', (255,0,0)), **kwargs):
+        super().__init__(*args, **kwargs)
+
+        def coerce(ex_param):
+            if ex_param is None:
+                return None
+            elif (type(ex_param) is list) or (type(ex_param) is set):
+                return list(ex_param)
+            else:
+                return [ex_param]
+
+        exclude = exclude if type(exclude) in {list, set} else [exclude]
+
+        self.exclude = []
+        for ex_count, ex_type, ex_color in exclude:
+            self.exclude.append((coerce(ex_count), coerce(ex_type), coerce(ex_color)))
+
+
+    def filter_pair(self, shapes1, shapes2, ood=False, **kwargs):
+        return ood ^ super().filter_pair(shapes1, shapes2, **kwargs)
+
+    def filter_shapes_def(self, shapes, **kwargs):
+        for ex_count, ex_type, ex_color in self.exclude:
+            if ((ex_count is None or shapes.count in ex_count) and
+                    (ex_type is None or shapes.type in ex_type) and
+                    (ex_color is None or shapes.color in ex_color)):
+                return False
+        return True
+
+
+
+class NewExcludeShapeData(NewShapeData):
+    """Shape data which enables "holding out" a certain shape or combination
+
+    Args:
+        exclude_shapes (Set[Shape]): Shapes to exclude from generation
+        exclude_lists (List[List[Shape]]): Combinations of shapes to exclude from generation
+    """
+
+    def __init__(self, *args, exclude_shapes:set={}, exclude_lists:list=[], **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.exclude_shapes = exclude_shapes
+        self.exclude_lists = {tuple(sorted(shapes)) for shapes in exclude_lists}
+
+    def filter_shapes_def(self, shapes, **kwargs):
+        return tuple(sorted(shapes)) not in self.exclude_lists
+
+    def filter_shape(self, shape, **kwargs):
+        return shape not in self.exclude_shapes
+
+
+
+
 class ShapeData():
     """Simple shape data source of image pairs with same/diff labels
 
@@ -159,32 +306,28 @@ class ShapeData():
         im_size: Size of the generated images
         shape_scale: Fraction of (shape size)/(image size)
         outline: Outline color for shapes
+        alec_mode: Only one category of shape per image
         min_shapes: Minimum number of shapes in each image
         max_shapes: Maximum number of shapes in each image
-        shape_types: List of possible shape type strings, randomly sampled
-            for every generated shape
-        shape_colors: Defines shape colors. Either a 0-argument function
-            returning a ([0-255],[0-255],[0-255]) color tuple or a list.
-            If a function, it's called to pick the color for each shape.
-            If a list, it's randomly sampled for each shape.
+        shape_types: Collection of possible shape type strings
+        shape_colors: Collection of possible shape colors
+
     """
 
     def __init__(self, batch_size:int, im_size:int,
-                 shape_scale:float=0.2, outline=None,
+                 shape_scale:float=0.2, outline=None, alec_mode:bool=True,
                  min_shapes:int=1, max_shapes:int=5,
-                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS,):
+                 shape_types=SHAPE_TYPES, shape_colors=SHAPE_COLORS):
         self.batch_size = batch_size
         self.im_size = im_size
         self.shape_scale = shape_scale
         self.outline = outline
+        self.alec_mode = alec_mode
         self.min_shapes = min_shapes
         self.max_shapes = max_shapes
 
         self.shape_types = shape_types
-        if type(shape_colors) is list:
-            self.shape_color_f = lambda: random.choice(shape_colors)
-        else:
-            self.shape_color_f = shape_colors
+        self.shape_colors = shape_colors
 
     def create_batch(self, same_p:float=0.5, shapes:List[Shape]=None):
         """Create a batch of image pairs along with same/diff labels.
@@ -238,16 +381,102 @@ class ShapeData():
     def select_shape_list(self):
         """Utility function to select a list of shapes. """
         count = random.randint(self.min_shapes, self.max_shapes)
+        if self.alec_mode:
+            return [self.select_shape()] * count
+
         return [self.select_shape() for _ in range(count)]
 
     def select_shape(self):
         """Utility function to select a single shape. """
         shape_type = random.choice(self.shape_types)
-        shape_color = self.shape_color_f()
+        shape_color = random.choice(self.shape_colors)
         return Shape(type=shape_type, color=shape_color)
 
 
-class AlecModeShapeData(ShapeData):
+
+class OODShapeData(ShapeData):
+    def __init__(self, *args, exclude=(None, 'square', (255,0,0)), **kwargs):
+        super().__init__(*args, **kwargs)
+
+        ex_count, ex_type, ex_color = exclude
+
+        def coerce(ex_param):
+            if ex_param is None:
+                return None
+            elif (type(ex_param) is list) or (type(ex_param) is set):
+                return list(ex_param)
+            else:
+                return [ex_param]
+
+        self.exclude = coerce(ex_count), coerce(ex_type), coerce(ex_color)
+        self.ood = False
+        
+
+    def create_batch(self, ood=False, **kwargs):
+        self.ood = ood
+        return super().create_batch(**kwargs)
+
+
+    def select_pair(self, same, max_tries=1000):
+        shapes1 = self.select_shape_list(ood=self.ood)
+        if same:
+            return shapes1, shapes1
+
+        for _ in range(max_tries):
+            if self.ood:
+                count, type, color = self.select_alec_def()
+                shapes2 = [Shape(type=type, color=color)] * count
+            else:
+                shapes2 = self.select_shape_list(ood=self.ood)
+
+            if shapes1 != shapes2:
+                return shapes1, shapes2
+
+        raise Exception("reached max number of tries for generating pair")
+
+    def select_shape_list(self, ood=False, max_tries=1000):
+        if ood:
+            count, type, color = self.select_ood_def()
+            return [Shape(type=type, color=color)] * count
+
+        alec_def = self.select_alec_def()
+        for _ in range(max_tries):
+            if self.is_excluded(*alec_def):
+                alec_def = self.select_alec_def()
+            else:
+                count, type, color = alec_def
+                return [Shape(type=type, color=color)] * count
+
+        raise Exception("reached max number of tries for generating shape list")
+
+    def select_ood_def(self):
+        ex_count, ex_type, ex_color = self.exclude
+        if ex_count is None:
+            count = random.randint(self.min_shapes, self.max_shapes)
+        else:
+            count = random.choice(ex_count)
+        type = random.choice(self.shape_types if ex_type is None else ex_type)
+        color = random.choice(self.shape_colors if ex_color is None else ex_color)
+        return count, type, color
+
+
+    def select_alec_def(self):
+        count = random.randint(self.min_shapes, self.max_shapes)
+        type = random.choice(self.shape_types)
+        color = random.choice(self.shape_colors)
+        return count, type, color
+
+
+    def is_excluded(self, count, type, color):
+        ex_count, ex_type, ex_color = self.exclude
+        return ((ex_count is None or count in ex_count) and
+                (ex_type is None or type in ex_type) and
+                (ex_color is None or color in ex_color))
+
+
+
+
+class StrongAlecModeShapeData(ShapeData):
     """Alec's suggestions for changing the data
 
     Base behavior is only one category of shape per image. Strong Alec mode
@@ -256,19 +485,18 @@ class AlecModeShapeData(ShapeData):
     'Not much how bout you' - Alec
     """
 
-    def __init__(self, *args, weak=True, strong=False,
+    def __init__(self, *args, weak=True, strong=True,
                  smart=True, dumb=False, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, alec_mode=True, **kwargs)
+        #self.strong = strong
 
-        self.strong = strong
-
-    def select_shape_list(self):
-        count = random.randint(self.min_shapes, self.max_shapes)
-        return [self.select_shape()] * count
+    #def select_shape_list(self):
+        #count = random.randint(self.min_shapes, self.max_shapes)
+        #return [self.select_shape()] * count
 
     def select_pair(self, same, max_tries=1000):
-        if not self.strong:
-            return super().select_pair(same)
+        #if not self.strong:
+            #return super().select_pair(same)
 
         count = random.randint(self.min_shapes, self.max_shapes)
         shape_type, shape_color = self.select_shape()
