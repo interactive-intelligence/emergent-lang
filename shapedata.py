@@ -134,7 +134,7 @@ def demo_dataset(data, shape=(4, 3), pad_value=100, pad_width=6, sep_width=3, **
     x = np.concatenate([
         x1[:size],
         np.zeros((size, x1.shape[1], sep_width, 3), np.uint8) + pad_value +
-        y.astype(np.uint8)[:size].reshape(-1, 1, 1, 1) * (255 - pad_value),
+        y.astype(np.uint8)[:size].reshape(-1, 1, 1, 1) * (pad_value - 100),
         x2[:size],
     ], axis=2)
 
